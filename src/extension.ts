@@ -2,6 +2,7 @@
 
 import * as vscode from 'vscode';
 import * as firebase from 'firebase';
+import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
     const config = {
@@ -14,11 +15,22 @@ export function activate(context: vscode.ExtensionContext) {
     };
     firebase.initializeApp(config);
 
-    console.log('Congratulations, your extension "vscode-firebase" is now active!');
+    let initialized = false;
 
-    let disposable = vscode.commands.registerCommand('extension.sayHello', () => {
-        firebase.database().ref('/live/hello').set('Hello World!');
-        vscode.window.showInformationMessage('Hello World!');
+    function saveDocument(doc: vscode.TextDocument) {
+        const file = path.basename(doc.fileName).replace(/[^a-z0-9-]/gi, '_');
+        firebase.database().ref('/live').child(file).set(doc.getText());
+    }
+
+    let disposable = vscode.commands.registerCommand('extension.shareCode', () => {
+        vscode.window.showInformationMessage(`Sharing code on Firebase: ${config.databaseURL}`);
+        if (!initialized) {
+            vscode.workspace.onDidSaveTextDocument(saveDocument, context.subscriptions);
+            initialized = true;
+        }
+        if (vscode.window.activeTextEditor) {
+            saveDocument(vscode.window.activeTextEditor.document);
+        }
     });
 
     context.subscriptions.push(disposable);
